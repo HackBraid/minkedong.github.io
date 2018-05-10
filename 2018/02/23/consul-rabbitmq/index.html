@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=6.2.0" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="http://7xl2ev.com1.z0.glb.clouddn.com/monkey.ico?v=6.2.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="http://7xl2ev.com1.z0.glb.clouddn.com/monkey.ico?v=6.2.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="http://7xl2ev.com1.z0.glb.clouddn.com/monkey.ico?v=6.2.0">
+
+
+  <link rel="mask-icon" href="http://7xl2ev.com1.z0.glb.clouddn.com/monkey.ico?v=6.2.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '6.2.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="工作中需要构建rabbitmq集群，前置”服务发现、高可用、LoadBalance”可以使用haproxy+keepalived，但是这种方案还是比较单一，consul在此功能上显得更加全面，consul基于go语言开发，轻量级，用于实现分布式系统的服务发现与配置。这里我们就用consul和rabbitmq集群的组合实现rabbitmq服务的”自动发现、高可用、LoadBalance”（可以以同">
+<meta name="keywords" content="rabbitmq,consul">
+<meta property="og:type" content="article">
+<meta property="og:title" content="rabbitmq集群 &amp;&amp; consul自动发现">
+<meta property="og:url" content="http://blog.08050142.com/2018/02/23/consul-rabbitmq/index.html">
+<meta property="og:site_name" content="minkedong&#39;s  home">
+<meta property="og:description" content="工作中需要构建rabbitmq集群，前置”服务发现、高可用、LoadBalance”可以使用haproxy+keepalived，但是这种方案还是比较单一，consul在此功能上显得更加全面，consul基于go语言开发，轻量级，用于实现分布式系统的服务发现与配置。这里我们就用consul和rabbitmq集群的组合实现rabbitmq服务的”自动发现、高可用、LoadBalance”（可以以同">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://7xl2ev.com1.z0.glb.clouddn.com/blog_consul.png">
+<meta property="og:updated_time" content="2018-05-10T11:08:19.186Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="rabbitmq集群 &amp;&amp; consul自动发现">
+<meta name="twitter:description" content="工作中需要构建rabbitmq集群，前置”服务发现、高可用、LoadBalance”可以使用haproxy+keepalived，但是这种方案还是比较单一，consul在此功能上显得更加全面，consul基于go语言开发，轻量级，用于实现分布式系统的服务发现与配置。这里我们就用consul和rabbitmq集群的组合实现rabbitmq服务的”自动发现、高可用、LoadBalance”（可以以同">
+<meta name="twitter:image" content="http://7xl2ev.com1.z0.glb.clouddn.com/blog_consul.png">
+
+
+
+
+
+
+  <link rel="canonical" href="http://blog.08050142.com/2018/02/23/consul-rabbitmq/"/>
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>rabbitmq集群 && consul自动发现 | minkedong's  home</title>
+  
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">minkedong's  home</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+    <a href="/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-home"></i> <br />首页</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+    <a href="/categories/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-th"></i> <br />分类</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+    <a href="/tags/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />标签</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+    <a href="/archives/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />归档</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+    <a href="/about/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-user"></i> <br />关于</a>
+  </li>
+
+      
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />搜索</a>
+        </li>
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off"
+             placeholder="搜索..." spellcheck="false"
+             type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://blog.08050142.com/2018/02/23/consul-rabbitmq/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="minkedong">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="http://7xl2ev.com1.z0.glb.clouddn.com/houseilei.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="minkedong's  home">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">rabbitmq集群 && consul自动发现
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2018-02-23 22:50:00" itemprop="dateCreated datePublished" datetime="2018-02-23T22:50:00+08:00">2018-02-23</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2018-05-10 19:08:19" itemprop="dateModified" datetime="2018-05-10T19:08:19+08:00">2018-05-10</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/编程/" itemprop="url" rel="index"><span itemprop="name">编程</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2018/02/23/consul-rabbitmq/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2018/02/23/consul-rabbitmq/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="post-meta-item-icon"
+            >
+            <i class="fa fa-eye"></i>
+             阅读次数： 
+            <span class="busuanzi-value" id="busuanzi_value_page_pv" ></span>
+            </span>
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>工作中需要构建rabbitmq集群，前置”服务发现、高可用、LoadBalance”可以使用haproxy+keepalived，但是这种方案还是比较单一，consul在此功能上显得更加全面，consul基于go语言开发，轻量级，用于实现分布式系统的服务发现与配置。这里我们就用consul和rabbitmq集群的组合实现rabbitmq服务的”自动发现、高可用、LoadBalance”（可以以同样的方式实现consul+redis、consul+mysql、consul+apigateway等等）。如有疑问请联系我，大家共同学习！</p>
+</blockquote>
+<a id="more"></a>
+<h2 id="概览"><a href="#概览" class="headerlink" title="概览"></a>概览</h2><p><strong>1.基础环境</strong></p>
+<ul>
+<li>ip:192.168.50.201    hostname:consulserver01    system:centos7</li>
+<li>ip:192.168.50.202    hostname:consulserver02    system:centos7</li>
+<li>ip:192.168.50.203    hostname:consulserver03    system:centos7</li>
+<li>ip:192.168.50.204    hostname:consulclient01    system:centos7</li>
+<li>ip:192.168.50.205    hostname:consulclient02    system:centos7</li>
+<li>ip:192.168.50.206    hostname:consulclient03    system:centos7</li>
+</ul>
+<p><strong>2.全局图</strong><br><img src="http://7xl2ev.com1.z0.glb.clouddn.com/blog_consul.png" alt="mahua"></p>
+<h2 id="rabbitmq集群搭建"><a href="#rabbitmq集群搭建" class="headerlink" title="rabbitmq集群搭建"></a>rabbitmq集群搭建</h2><p><strong>1.更改hosts文件</strong><br>在consulclient01、consulclient02、consulclient03机器分别运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/hosts</span><br></pre></td></tr></table></figure></p>
+<p>加入如下内容<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">192.168.50.204 consulclient01</span><br><span class="line">192.168.50.205 consulclient02</span><br><span class="line">192.168.50.206 consulclient03</span><br></pre></td></tr></table></figure></p>
+<p><strong>2.安装rabbitmq</strong><br>在consulclient01、consulclient02、consulclient03机器分别运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo yum -y install erlang</span><br><span class="line">wget http://www.rabbitmq.com/releases/rabbitmq-server/v3.6.6/rabbitmq-server-3.6.6-1.el7.noarch.rpm</span><br><span class="line">sudo yum -y install rabbitmq-server-3.6.6-1.el7.noarch.rpm</span><br></pre></td></tr></table></figure></p>
+<p><strong>2.配置rabbitmq</strong><br>在consulclient01运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/rabbitmq/rabbitmq.config</span><br></pre></td></tr></table></figure></p>
+<p>加入如下内容（这里根据实际机器情况调整各个参数值）<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">[</span><br><span class="line">    &#123;</span><br><span class="line">        rabbit, [</span><br><span class="line">            &#123;tcp_listeners, [&#123;<span class="string">"127.0.0.1"</span>, 5672&#125;, &#123;<span class="string">"192.168.50.204"</span>, 5672&#125;]&#125;,</span><br><span class="line">            &#123;cluster_partition_handling, pause_minority&#125;,</span><br><span class="line">            &#123;log_levels, [&#123;connection, info&#125;, &#123;channel, info&#125;]&#125;,</span><br><span class="line"></span><br><span class="line">            &#123;vm_memory_high_watermark, 0.5&#125;,</span><br><span class="line">            &#123;vm_memory_high_watermark_paging_ratio, 0.5&#125;,</span><br><span class="line">            &#123;memory_monitor_interval, 2500&#125;,</span><br><span class="line"></span><br><span class="line">            &#123;disk_free_limit, <span class="string">"300MB"</span>&#125;,</span><br><span class="line">            %% Set the default AMQP heartbeat delay (<span class="keyword">in</span> seconds).</span><br><span class="line">            %%</span><br><span class="line">            &#123;heartbeat, 60&#125;,</span><br><span class="line"></span><br><span class="line">            %% Set the max permissible size of an AMQP frame (<span class="keyword">in</span> bytes).</span><br><span class="line">            %%</span><br><span class="line">            &#123;frame_max, 131072&#125;,</span><br><span class="line"></span><br><span class="line">            %% Set the max frame size the server will accept before connection</span><br><span class="line">            %% tuning occurs</span><br><span class="line">            %%</span><br><span class="line">            &#123;initial_frame_max, 4096&#125;,</span><br><span class="line"></span><br><span class="line">            %% Set the max permissible number of channels per connection.</span><br><span class="line">            %% 0 means <span class="string">"no limit"</span>.</span><br><span class="line">            %%</span><br><span class="line">            &#123;channel_max, 512&#125;</span><br><span class="line">        ]</span><br><span class="line">    &#125;</span><br><span class="line">].</span><br></pre></td></tr></table></figure></p>
+<p>在consulclient02运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/rabbitmq/rabbitmq.config</span><br></pre></td></tr></table></figure></p>
+<p>加入如下内容（这里根据实际机器情况调整各个参数值）<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">[</span><br><span class="line">    &#123;</span><br><span class="line">        rabbit, [</span><br><span class="line">            &#123;tcp_listeners, [&#123;<span class="string">"127.0.0.1"</span>, 5672&#125;, &#123;<span class="string">"192.168.50.205"</span>, 5672&#125;]&#125;,</span><br><span class="line">            &#123;cluster_partition_handling, pause_minority&#125;,</span><br><span class="line">            &#123;log_levels, [&#123;connection, info&#125;, &#123;channel, info&#125;]&#125;,</span><br><span class="line"></span><br><span class="line">            &#123;vm_memory_high_watermark, 0.5&#125;,</span><br><span class="line">            &#123;vm_memory_high_watermark_paging_ratio, 0.5&#125;,</span><br><span class="line">            &#123;memory_monitor_interval, 2500&#125;,</span><br><span class="line"></span><br><span class="line">            &#123;disk_free_limit, <span class="string">"300MB"</span>&#125;,</span><br><span class="line">            %% Set the default AMQP heartbeat delay (<span class="keyword">in</span> seconds).</span><br><span class="line">            %%</span><br><span class="line">            &#123;heartbeat, 60&#125;,</span><br><span class="line"></span><br><span class="line">            %% Set the max permissible size of an AMQP frame (<span class="keyword">in</span> bytes).</span><br><span class="line">            %%</span><br><span class="line">            &#123;frame_max, 131072&#125;,</span><br><span class="line"></span><br><span class="line">            %% Set the max frame size the server will accept before connection</span><br><span class="line">            %% tuning occurs</span><br><span class="line">            %%</span><br><span class="line">            &#123;initial_frame_max, 4096&#125;,</span><br><span class="line"></span><br><span class="line">            %% Set the max permissible number of channels per connection.</span><br><span class="line">            %% 0 means <span class="string">"no limit"</span>.</span><br><span class="line">            %%</span><br><span class="line">            &#123;channel_max, 512&#125;</span><br><span class="line">        ]</span><br><span class="line">    &#125;</span><br><span class="line">].</span><br></pre></td></tr></table></figure></p>
+<p>在consulclient03运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/rabbitmq/rabbitmq.config</span><br></pre></td></tr></table></figure></p>
+<p>加入如下内容（这里根据实际机器情况调整各个参数值）<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">[</span><br><span class="line">    &#123;</span><br><span class="line">        rabbit, [</span><br><span class="line">            &#123;tcp_listeners, [&#123;<span class="string">"127.0.0.1"</span>, 5672&#125;, &#123;<span class="string">"192.168.50.206"</span>, 5672&#125;]&#125;,</span><br><span class="line">            &#123;cluster_partition_handling, pause_minority&#125;,</span><br><span class="line">            &#123;log_levels, [&#123;connection, info&#125;, &#123;channel, info&#125;]&#125;,</span><br><span class="line"></span><br><span class="line">            &#123;vm_memory_high_watermark, 0.5&#125;,</span><br><span class="line">            &#123;vm_memory_high_watermark_paging_ratio, 0.5&#125;,</span><br><span class="line">            &#123;memory_monitor_interval, 2500&#125;,</span><br><span class="line"></span><br><span class="line">            &#123;disk_free_limit, <span class="string">"300MB"</span>&#125;,</span><br><span class="line">            %% Set the default AMQP heartbeat delay (<span class="keyword">in</span> seconds).</span><br><span class="line">            %%</span><br><span class="line">            &#123;heartbeat, 60&#125;,</span><br><span class="line"></span><br><span class="line">            %% Set the max permissible size of an AMQP frame (<span class="keyword">in</span> bytes).</span><br><span class="line">            %%</span><br><span class="line">            &#123;frame_max, 131072&#125;,</span><br><span class="line"></span><br><span class="line">            %% Set the max frame size the server will accept before connection</span><br><span class="line">            %% tuning occurs</span><br><span class="line">            %%</span><br><span class="line">            &#123;initial_frame_max, 4096&#125;,</span><br><span class="line"></span><br><span class="line">            %% Set the max permissible number of channels per connection.</span><br><span class="line">            %% 0 means <span class="string">"no limit"</span>.</span><br><span class="line">            %%</span><br><span class="line">            &#123;channel_max, 512&#125;</span><br><span class="line">        ]</span><br><span class="line">    &#125;</span><br><span class="line">].</span><br></pre></td></tr></table></figure></p>
+<p><strong>3.启动rabbitmq，启用管理界面</strong><br>在consulclient01、consulclient02、consulclient03机器分别运行<br>启动rabbitmq<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo service rabbitmq-server start</span><br></pre></td></tr></table></figure></p>
+<p>启动管理页面<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo rabbitmq-plugins <span class="built_in">enable</span> rabbitmq_management</span><br></pre></td></tr></table></figure></p>
+<p>设置开机启动<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo systemctl <span class="built_in">enable</span> rabbitmq-server</span><br></pre></td></tr></table></figure></p>
+<p>查看rabbitmq节点状态信息<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo rabbitmqctl status</span><br></pre></td></tr></table></figure></p>
+<p>访问管理界面<br><a href="http://192.168.50.204:15672" target="_blank" rel="noopener">http://192.168.50.204:15672</a><br><a href="http://192.168.50.205:15672" target="_blank" rel="noopener">http://192.168.50.205:15672</a><br><a href="http://192.168.50.206:15672" target="_blank" rel="noopener">http://192.168.50.206:15672</a></p>
+<p><strong>4.配置rabbitmq集群</strong><br>把consulclient01机器上的/var/lib/rabbitmq/.erlang.cookie文件同步到consulclient02、consulclient03机器上，注意ower和权限配置保持一致</p>
+<p>重新启动运行consulclient02、consulclient03节点<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo service rabbitmq-server restart</span><br></pre></td></tr></table></figure></p>
+<p>将 consulclient02、consulclient03 与 consulclient01 组成集群（在consulclient02、consulclient03节点上运行下面的命令）<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo rabbitmqctl stop_app</span><br><span class="line">sudo rabbitmqctl join_cluster rabbit@consulclient01    <span class="comment"># (默认都是磁盘节点，如果要使自己成为内存节点，则加上--ram参数)</span></span><br><span class="line">sudo rabbitmqctl start_app</span><br></pre></td></tr></table></figure></p>
+<p>查看集群状态<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo rabbitmqctl cluster_status</span><br></pre></td></tr></table></figure></p>
+<p><strong>5.配置策略: 镜像模式（可选）</strong><br>在任一集群节点上运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo rabbitmqctl set_policy -p / ha-allqueue <span class="string">"^"</span> <span class="string">'&#123;"ha-mode":"all"&#125;'</span></span><br></pre></td></tr></table></figure></p>
+<p>备注：这行命令在名称为”/“的vhost上创建了一个策略，策略名称为 ha-allqueue，策略模式为 all 即复制到所有节点，包含新增节点，策略正则表达式为“^”表示所有匹配所有队列名称</p>
+<p><strong>6.一般操作</strong><br>新增用户<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo rabbitmqctl  add_user  jack abc123abc</span><br></pre></td></tr></table></figure></p>
+<p>设置用户角色(administrator，monitoring，policymaker，management)<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo rabbitmqctl  set_user_tags  jack  administrator</span><br></pre></td></tr></table></figure></p>
+<p>备注：这两步操作完成后，就可以使用用户来登录rabbitmq管理界面，在里面可以进行方便的其他各种操作</p>
+<h2 id="consul-server节点"><a href="#consul-server节点" class="headerlink" title="consul server节点"></a>consul server节点</h2><p><strong>1.安装</strong><br>在consulserver01、consulserver02、consulserver03机器分别运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">wget https://releases.hashicorp.com/consul/1.0.6/consul_1.0.6_linux_amd64.zip</span><br><span class="line">unzip consul_1.0.6_linux_amd64.zip</span><br><span class="line">sudo mv consul /usr/bin/</span><br></pre></td></tr></table></figure></p>
+<p><strong>2.配置</strong><br>创建目录，在consulserver01、consulserver02、consulserver03机器分别运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">sudo mkdir -p /etc/consul.d/</span><br><span class="line">sudo mkdir -p /data/consul/</span><br><span class="line">sudo mkdir -p /data/consul/shell</span><br><span class="line">sudo mkdir -p /var/<span class="built_in">log</span>/consul</span><br><span class="line">sudo chown -R vagrant:vagrant /data/consul      <span class="comment"># 注意这里的用户名使用你机器上真正的用户名</span></span><br><span class="line">sudo chown -R vagrant:vagrant /var/<span class="built_in">log</span>/consul   <span class="comment"># 注意这里的用户名使用你机器上真正的用户名</span></span><br></pre></td></tr></table></figure></p>
+<p>在consulserver01节点上运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/consul.d/server.json</span><br></pre></td></tr></table></figure></p>
+<p>加入如下配置<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">"data_dir"</span>: <span class="string">"/data/consul"</span>,</span><br><span class="line">  <span class="string">"datacenter"</span>: <span class="string">"dc1"</span>,</span><br><span class="line">  <span class="string">"log_level"</span>: <span class="string">"INFO"</span>,</span><br><span class="line">  <span class="string">"server"</span>: <span class="literal">true</span>,</span><br><span class="line">  <span class="string">"bootstrap_expect"</span>: 2,</span><br><span class="line">  <span class="string">"bind_addr"</span>: <span class="string">"192.168.50.201"</span>,</span><br><span class="line">  <span class="string">"client_addr"</span>: <span class="string">"192.168.50.201"</span>,</span><br><span class="line">  <span class="string">"ports"</span>: &#123;</span><br><span class="line">    <span class="string">"dns"</span>: 53</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">"recursors"</span>: [<span class="string">"8.8.8.8"</span>, <span class="string">"8.8.4.4"</span>],</span><br><span class="line">  <span class="string">"ui"</span>:<span class="literal">true</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>在consulserver02节点上运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/consul.d/server.json</span><br></pre></td></tr></table></figure></p>
+<p>加入如下配置<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">"data_dir"</span>: <span class="string">"/data/consul"</span>,</span><br><span class="line">  <span class="string">"datacenter"</span>: <span class="string">"dc1"</span>,</span><br><span class="line">  <span class="string">"log_level"</span>: <span class="string">"INFO"</span>,</span><br><span class="line">  <span class="string">"server"</span>: <span class="literal">true</span>,</span><br><span class="line">  <span class="string">"bootstrap_expect"</span>: 2,</span><br><span class="line">  <span class="string">"bind_addr"</span>: <span class="string">"192.168.50.202"</span>,</span><br><span class="line">  <span class="string">"client_addr"</span>: <span class="string">"192.168.50.202"</span>,</span><br><span class="line">  <span class="string">"start_join"</span>: [<span class="string">"192.168.50.201"</span>, <span class="string">"192.168.50.203"</span>],</span><br><span class="line">  <span class="string">"retry_join"</span>: [<span class="string">"192.168.50.201"</span>, <span class="string">"192.168.50.203"</span>],</span><br><span class="line">  <span class="string">"ports"</span>: &#123;</span><br><span class="line">    <span class="string">"dns"</span>: 53</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">"recursors"</span>: [<span class="string">"8.8.8.8"</span>, <span class="string">"8.8.4.4"</span>],</span><br><span class="line">  <span class="string">"ui"</span>:<span class="literal">false</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>在consulserver03节点上运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/consul.d/server.json</span><br></pre></td></tr></table></figure></p>
+<p>加入如下配置<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">"data_dir"</span>: <span class="string">"/data/consul"</span>,</span><br><span class="line">  <span class="string">"datacenter"</span>: <span class="string">"dc1"</span>,</span><br><span class="line">  <span class="string">"log_level"</span>: <span class="string">"INFO"</span>,</span><br><span class="line">  <span class="string">"server"</span>: <span class="literal">true</span>,</span><br><span class="line">  <span class="string">"bootstrap_expect"</span>: 2,</span><br><span class="line">  <span class="string">"bind_addr"</span>: <span class="string">"192.168.50.203"</span>,</span><br><span class="line">  <span class="string">"client_addr"</span>: <span class="string">"192.168.50.203"</span>,</span><br><span class="line">  <span class="string">"start_join"</span>: [<span class="string">"192.168.50.201"</span>, <span class="string">"192.168.50.202"</span>],</span><br><span class="line">  <span class="string">"retry_join"</span>: [<span class="string">"192.168.50.201"</span>, <span class="string">"192.168.50.202"</span>],</span><br><span class="line">  <span class="string">"ports"</span>: &#123;</span><br><span class="line">    <span class="string">"dns"</span>: 53</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">"recursors"</span>: [<span class="string">"8.8.8.8"</span>, <span class="string">"8.8.4.4"</span>],</span><br><span class="line">  <span class="string">"ui"</span>:<span class="literal">false</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p><strong>3.启动consul server</strong><br>在consulserver01、consulserver02、consulserver03机器依次运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo consul agent -config-dir=/etc/consul.d &gt;/var/<span class="built_in">log</span>/consul/consul.log 2&gt;&amp;1 &amp;</span><br></pre></td></tr></table></figure></p>
+<p>查看/var/log/consul/consul.log是否正常启动</p>
+<p><strong>4.更新第一个consul server节点配置</strong><br>在consulserver01节点上运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/consul.d/server.json</span><br></pre></td></tr></table></figure></p>
+<p>加入如下配置<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">"data_dir"</span>: <span class="string">"/data/consul"</span>,</span><br><span class="line">  <span class="string">"datacenter"</span>: <span class="string">"dc1"</span>,</span><br><span class="line">  <span class="string">"log_level"</span>: <span class="string">"INFO"</span>,</span><br><span class="line">  <span class="string">"server"</span>: <span class="literal">true</span>,</span><br><span class="line">  <span class="string">"bootstrap_expect"</span>: 2,</span><br><span class="line">  <span class="string">"bind_addr"</span>: <span class="string">"192.168.50.201"</span>,</span><br><span class="line">  <span class="string">"client_addr"</span>: <span class="string">"192.168.50.201"</span>,</span><br><span class="line">  <span class="string">"start_join"</span>: [<span class="string">"192.168.50.202"</span>, <span class="string">"192.168.50.203"</span>],</span><br><span class="line">  <span class="string">"retry_join"</span>: [<span class="string">"192.168.50.202"</span>, <span class="string">"192.168.50.203"</span>],</span><br><span class="line">  <span class="string">"ports"</span>: &#123;</span><br><span class="line">    <span class="string">"dns"</span>: 53</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">"recursors"</span>: [<span class="string">"8.8.8.8"</span>, <span class="string">"8.8.4.4"</span>],</span><br><span class="line">  <span class="string">"ui"</span>:<span class="literal">true</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>更新此节点配置<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo consul reload -http-addr=192.168.50.201:8500</span><br></pre></td></tr></table></figure></p>
+<p><strong>5.检查集群是否正常</strong><br>在任一节点上运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo consul members -http-addr=192.168.50.201:8500</span><br></pre></td></tr></table></figure></p>
+<p>还可以通过集群的ui管理界面来查看，地址为：<br><a href="http://192.168.50.201:8500/ui/" target="_blank" rel="noopener">http://192.168.50.201:8500/ui/</a><br><a href="http://192.168.50.202:8500/ui/" target="_blank" rel="noopener">http://192.168.50.202:8500/ui/</a><br><a href="http://192.168.50.203:8500/ui/" target="_blank" rel="noopener">http://192.168.50.203:8500/ui/</a></p>
+<p>备注：线上系统可以部署nginx服务，然后在nginx中加上basic auth，再反向代理到此管理界面，供外网访问</p>
+<h2 id="consul-client节点"><a href="#consul-client节点" class="headerlink" title="consul client节点"></a>consul client节点</h2><p><strong>1.安装</strong><br>在consulclient01、consulclient02、consulclient03机器分别运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">wget https://releases.hashicorp.com/consul/1.0.6/consul_1.0.6_linux_amd64.zip</span><br><span class="line">unzip consul_1.0.6_linux_amd64.zip</span><br><span class="line">sudo mv consul /usr/<span class="built_in">local</span>/bin/</span><br></pre></td></tr></table></figure></p>
+<p><strong>2.配置</strong><br>创建目录，在consulclient01、consulclient02、consulclient03机器分别运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">sudo mkdir -p /etc/consul.d/</span><br><span class="line">sudo mkdir -p /data/consul/</span><br><span class="line">sudo mkdir -p /data/consul/shell</span><br><span class="line">sudo mkdir -p /var/<span class="built_in">log</span>/consul</span><br><span class="line">sudo chown -R vagrant:vagrant /data/consul      <span class="comment"># 注意这里的用户名使用你机器上真正的用户名</span></span><br><span class="line">sudo chown -R vagrant:vagrant /var/<span class="built_in">log</span>/consul   <span class="comment"># 注意这里的用户名使用你机器上真正的用户名</span></span><br></pre></td></tr></table></figure></p>
+<p>在consulclient01节点上运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/consul.d/client.json</span><br></pre></td></tr></table></figure></p>
+<p>加入如下配置<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">"data_dir"</span>: <span class="string">"/data/consul"</span>,</span><br><span class="line">  <span class="string">"datacenter"</span>: <span class="string">"dc1"</span>,</span><br><span class="line">  <span class="string">"enable_script_checks"</span>: <span class="literal">true</span>,</span><br><span class="line">  <span class="string">"bind_addr"</span>: <span class="string">"192.168.50.204"</span>,</span><br><span class="line">  <span class="string">"retry_join"</span>: [<span class="string">"192.168.50.201"</span>, <span class="string">"192.168.50.202"</span>, <span class="string">"192.168.50.203"</span>],</span><br><span class="line">  <span class="string">"retry_interval"</span>: <span class="string">"30s"</span>,</span><br><span class="line">  <span class="string">"rejoin_after_leave"</span>: <span class="literal">true</span>,</span><br><span class="line">  <span class="string">"start_join"</span>: [<span class="string">"192.168.50.201"</span>, <span class="string">"192.168.50.202"</span>, <span class="string">"192.168.50.203"</span>]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>在consulclient02节点上运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/consul.d/client.json</span><br></pre></td></tr></table></figure></p>
+<p>加入如下配置<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">"data_dir"</span>: <span class="string">"/data/consul"</span>,</span><br><span class="line">  <span class="string">"datacenter"</span>: <span class="string">"dc1"</span>,</span><br><span class="line">  <span class="string">"enable_script_checks"</span>: <span class="literal">true</span>,</span><br><span class="line">  <span class="string">"bind_addr"</span>: <span class="string">"192.168.50.205"</span>,</span><br><span class="line">  <span class="string">"retry_join"</span>: [<span class="string">"192.168.50.201"</span>, <span class="string">"192.168.50.202"</span>, <span class="string">"192.168.50.203"</span>],</span><br><span class="line">  <span class="string">"retry_interval"</span>: <span class="string">"30s"</span>,</span><br><span class="line">  <span class="string">"rejoin_after_leave"</span>: <span class="literal">true</span>,</span><br><span class="line">  <span class="string">"start_join"</span>: [<span class="string">"192.168.50.201"</span>, <span class="string">"192.168.50.202"</span>, <span class="string">"192.168.50.203"</span>]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>在consulclient03节点上运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/consul.d/client.json</span><br></pre></td></tr></table></figure></p>
+<p>加入如下配置<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">"data_dir"</span>: <span class="string">"/data/consul"</span>,</span><br><span class="line">  <span class="string">"datacenter"</span>: <span class="string">"dc1"</span>,</span><br><span class="line">  <span class="string">"enable_script_checks"</span>: <span class="literal">true</span>,</span><br><span class="line">  <span class="string">"bind_addr"</span>: <span class="string">"192.168.50.206"</span>,</span><br><span class="line">  <span class="string">"retry_join"</span>: [<span class="string">"192.168.50.201"</span>, <span class="string">"192.168.50.202"</span>, <span class="string">"192.168.50.203"</span>],</span><br><span class="line">  <span class="string">"retry_interval"</span>: <span class="string">"30s"</span>,</span><br><span class="line">  <span class="string">"rejoin_after_leave"</span>: <span class="literal">true</span>,</span><br><span class="line">  <span class="string">"start_join"</span>: [<span class="string">"192.168.50.201"</span>, <span class="string">"192.168.50.202"</span>, <span class="string">"192.168.50.203"</span>]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p><strong>3.启动consul client</strong><br>在consulclient01、consulclient02、consulclient03机器分别运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nohup consul agent -config-dir=/etc/consul.d &gt;/var/<span class="built_in">log</span>/consul/consul.log 2&gt;&amp;1 &amp;</span><br></pre></td></tr></table></figure></p>
+<p>查看/var/log/consul/consul.log是否正常启动</p>
+<h2 id="配置rabbitmq节点发现服务"><a href="#配置rabbitmq节点发现服务" class="headerlink" title="配置rabbitmq节点发现服务"></a>配置rabbitmq节点发现服务</h2><p><strong>1.配置节点发现服务</strong><br>在consulclient01节点上运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/consul.d/rabbitmq.json</span><br></pre></td></tr></table></figure></p>
+<p>加入如下配置<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">"services"</span>: [</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="string">"name"</span>: <span class="string">"rabbitmq"</span>,</span><br><span class="line">      <span class="string">"tags"</span>: [</span><br><span class="line">        <span class="string">"rabbitmq"</span></span><br><span class="line">      ],</span><br><span class="line">      <span class="string">"address"</span>: <span class="string">"192.168.50.204"</span>,</span><br><span class="line">      <span class="string">"port"</span>: 5672,</span><br><span class="line">      <span class="string">"checks"</span>: [</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="string">"args"</span>: [<span class="string">"/data/consul/shell/check_rabbitmq.sh"</span>],</span><br><span class="line">          <span class="string">"interval"</span>: <span class="string">"15s"</span></span><br><span class="line">        &#125;</span><br><span class="line">      ]</span><br><span class="line">    &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>在consulclient02节点上运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/consul.d/rabbitmq.json</span><br></pre></td></tr></table></figure></p>
+<p>加入如下配置<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">"services"</span>: [</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="string">"name"</span>: <span class="string">"rabbitmq"</span>,</span><br><span class="line">      <span class="string">"tags"</span>: [</span><br><span class="line">        <span class="string">"rabbitmq"</span></span><br><span class="line">      ],</span><br><span class="line">      <span class="string">"address"</span>: <span class="string">"192.168.50.205"</span>,</span><br><span class="line">      <span class="string">"port"</span>: 5672,</span><br><span class="line">      <span class="string">"checks"</span>: [</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="string">"args"</span>: [<span class="string">"/data/consul/shell/check_rabbitmq.sh"</span>],</span><br><span class="line">          <span class="string">"interval"</span>: <span class="string">"15s"</span></span><br><span class="line">        &#125;</span><br><span class="line">      ]</span><br><span class="line">    &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>在consulclient03节点上运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/consul.d/rabbitmq.json</span><br></pre></td></tr></table></figure></p>
+<p>加入如下配置<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">"services"</span>: [</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="string">"name"</span>: <span class="string">"rabbitmq"</span>,</span><br><span class="line">      <span class="string">"tags"</span>: [</span><br><span class="line">        <span class="string">"rabbitmq"</span></span><br><span class="line">      ],</span><br><span class="line">      <span class="string">"address"</span>: <span class="string">"192.168.50.206"</span>,</span><br><span class="line">      <span class="string">"port"</span>: 5672,</span><br><span class="line">      <span class="string">"checks"</span>: [</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="string">"args"</span>: [<span class="string">"/data/consul/shell/check_rabbitmq.sh"</span>],</span><br><span class="line">          <span class="string">"interval"</span>: <span class="string">"15s"</span></span><br><span class="line">        &#125;</span><br><span class="line">      ]</span><br><span class="line">    &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p><strong>2.配置检测rabbitmq脚本</strong><br>在consulclient01、consulclient02、consulclient03机器分别运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /data/consul/shell/check_rabbitmq.sh</span><br></pre></td></tr></table></figure></p>
+<p>加入如下内容<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line">status=`sudo /usr/sbin/rabbitmqctl node_health_check`</span><br><span class="line">health=`sudo /usr/sbin/rabbitmqctl node_health_check |grep -Ec <span class="string">'Health check passed'</span>`</span><br><span class="line"><span class="built_in">echo</span> <span class="variable">$status</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> [ <span class="variable">$health</span> -ne 1 ]</span><br><span class="line"><span class="keyword">then</span></span><br><span class="line">    <span class="built_in">exit</span> 2</span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure></p>
+<p>加上可执行权限<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo chmod a+x /data/consul/shell/check_rabbitmq.sh</span><br></pre></td></tr></table></figure></p>
+<p><strong>3.consul client重新加载配置</strong><br>在各个节点上运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">consul reload -http-addr=127.0.0.1:8500</span><br><span class="line">consul reload -http-addr=127.0.0.1:8500</span><br><span class="line">consul reload -http-addr=127.0.0.1:8500</span><br></pre></td></tr></table></figure></p>
+<h2 id="客户端配置"><a href="#客户端配置" class="headerlink" title="客户端配置"></a>客户端配置</h2><ul>
+<li>客户端需要如何连接rabbitmq服务呢，下面我们在客户端机器上指定dns解析服务器，来使用consul的dns解析，连接到rabbitmq集群.（consul提供了dns解析服务，如果上面的操作都没问题的话，consul已经把”rabbitmq.service.consul”解析到了consulclient01、consulclient02、consulclient03这三台机器）</li>
+</ul>
+<p><strong>1.更改resolv配置</strong><br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/resolv.conf</span><br></pre></td></tr></table></figure></p>
+<p>在头部加入<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">nameserver 192.168.50.201</span><br><span class="line">nameserver 192.168.50.202</span><br><span class="line">nameserver 192.168.50.203</span><br></pre></td></tr></table></figure></p>
+<p><strong>2.测试</strong><br>这里就可以使用consul的域名解析服务了<br>备注：默认可以使用域名rabbitmq.service.consul或者rabbitmq.rabbitmq.service.consul，如果在上面的service定义中定义了多个tag，那么可以使用多个tag的域名，示例：tagname.rabbitmq.service.consul<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">nslookup rabbitmq.service.consul</span><br><span class="line">nslookup rabbitmq.rabbitmq.service.consul</span><br></pre></td></tr></table></figure></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ping rabbitmq.service.consul</span><br><span class="line">ping rabbitmq.rabbitmq.service.consul</span><br></pre></td></tr></table></figure>
+<p>至此，客户端就可以使用rabbitmq.service.consul或rabbitmq.rabbitmq.service.consul域名来访问rabbitmq集群。<br>并且如果rabbitmq集群有节点减少或增加，都不需要变动客户端代码。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      <div>
+        <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+  <div>坚持原创技术分享，您的支持将鼓励我继续创作！</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>打赏</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="http://7xl2ev.com1.z0.glb.clouddn.com/qrcode_wechat_14708854571033645.png" alt="minkedong 微信支付"/>
+        <p>微信支付</p>
+      </div>
+    
+
+    
+      <div id="alipay" style="display: inline-block">
+        <img id="alipay_qr" src="http://7xl2ev.com1.z0.glb.clouddn.com/qrcode_alipay_14708867141033645.png" alt="minkedong 支付宝"/>
+        <p>支付宝</p>
+      </div>
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/rabbitmq/" rel="tag"># rabbitmq</a>
+          
+            <a href="/tags/consul/" rel="tag"># consul</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/01/03/openresty-ppt/" rel="next" title="OpenResty在高并发场景的应用">
+                <i class="fa fa-chevron-left"></i> OpenResty在高并发场景的应用
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="http://7xl2ev.com1.z0.glb.clouddn.com/houseilei.jpg"
+                alt="minkedong" />
+            
+              <p class="site-author-name" itemprop="name">minkedong</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">16</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">2</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">19</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  <a href="https://github.com/minkedong" target="_blank" title="GitHub"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                  
+                </span>
+              
+            </div>
+          
+
+          
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#概览"><span class="nav-number">1.</span> <span class="nav-text">概览</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rabbitmq集群搭建"><span class="nav-number">2.</span> <span class="nav-text">rabbitmq集群搭建</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#consul-server节点"><span class="nav-number">3.</span> <span class="nav-text">consul server节点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#consul-client节点"><span class="nav-number">4.</span> <span class="nav-text">consul client节点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置rabbitmq节点发现服务"><span class="nav-number">5.</span> <span class="nav-text">配置rabbitmq节点发现服务</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#客户端配置"><span class="nav-number">6.</span> <span class="nav-text">客户端配置</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; 2016 &mdash; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">minkedong</span>
+
+  
+
+  
+</div>
+
+
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动 v3.7.1</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/theme-next/hexo-theme-next">NexT.Mist</a> v6.2.0</div>
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv" title="总访客量">
+      <i class="fa fa-user"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+    </span>
+  
+
+  
+    <span class="site-pv" title="总访问量">
+      <i class="fa fa-eye"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.2.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.2.0"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.2.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.2.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.2.0"></script>
+
+
+
+  
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  
+  
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail';
+    guest = guest.split(',').filter(function (item) {
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'fSmeO9NJBUgjHM0k2LSNlMYb-gzGzoHsz',
+        appKey: 'DWzo61igQxV29zfTN7C0vSfK',
+        placeholder: 'leave a message',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+  <script type="text/javascript">
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      
+        // ref: https://github.com/ForbesLindesay/unescape-html
+        var unescapeHtml = function(html) {
+          return String(html)
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, '\'')
+            .replace(/&#x3A;/g, ':')
+            // replace all the other &#x; chars
+            .replace(/&#(\d+);/g, function (m, p) { return String.fromCharCode(p); })
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&');
+        };
+      
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                
+                content = unescapeHtml(content);
+                
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url);
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+
+  
+<script>
+(function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https') {
+        bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';        
+    }
+    else {
+        bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+    }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+})();
+</script>
+
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
