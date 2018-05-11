@@ -102,25 +102,28 @@
 
 
 
-  <meta name="description" content="Grafana是一款采用 go 语言编写的开源应用，主要用于大规模指标数据的可视化展现官方文档：http://docs.grafana.org/">
-<meta name="keywords" content="grafana,elk">
+  <meta name="description" content="在业务逐渐变大后，系统维护工作需要投入越来越多的精力，于是开始了docker化改造。期间也遇到了一些实际问题，总结了一些经验，希望对已在生产环境中使用docker或者正在准备进行服务docker化改造的童鞋有所帮助！">
+<meta name="keywords" content="docker,swarm,traefik,portainer">
 <meta property="og:type" content="article">
-<meta property="og:title" content="实时日志分析之七：Grafana">
-<meta property="og:url" content="http://blog.08050142.com/2017/09/06/elk-grafana/index.html">
+<meta property="og:title" content="业务docker化改造">
+<meta property="og:url" content="http://blog.08050142.com/2018/05/11/docker/index.html">
 <meta property="og:site_name" content="minkedong&#39;s  home">
-<meta property="og:description" content="Grafana是一款采用 go 语言编写的开源应用，主要用于大规模指标数据的可视化展现官方文档：http://docs.grafana.org/">
+<meta property="og:description" content="在业务逐渐变大后，系统维护工作需要投入越来越多的精力，于是开始了docker化改造。期间也遇到了一些实际问题，总结了一些经验，希望对已在生产环境中使用docker或者正在准备进行服务docker化改造的童鞋有所帮助！">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2018-05-10T11:08:19.182Z">
+<meta property="og:image" content="http://7xl2ev.com1.z0.glb.clouddn.com/blog_docker_why.png">
+<meta property="og:image" content="http://7xl2ev.com1.z0.glb.clouddn.com/blog_docker.png">
+<meta property="og:updated_time" content="2018-05-11T09:31:24.003Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="实时日志分析之七：Grafana">
-<meta name="twitter:description" content="Grafana是一款采用 go 语言编写的开源应用，主要用于大规模指标数据的可视化展现官方文档：http://docs.grafana.org/">
+<meta name="twitter:title" content="业务docker化改造">
+<meta name="twitter:description" content="在业务逐渐变大后，系统维护工作需要投入越来越多的精力，于是开始了docker化改造。期间也遇到了一些实际问题，总结了一些经验，希望对已在生产环境中使用docker或者正在准备进行服务docker化改造的童鞋有所帮助！">
+<meta name="twitter:image" content="http://7xl2ev.com1.z0.glb.clouddn.com/blog_docker_why.png">
 
 
 
 
 
 
-  <link rel="canonical" href="http://blog.08050142.com/2017/09/06/elk-grafana/"/>
+  <link rel="canonical" href="http://blog.08050142.com/2018/05/11/docker/"/>
 
 
 
@@ -130,7 +133,7 @@
   };
 </script>
 
-  <title>实时日志分析之七：Grafana | minkedong's  home</title>
+  <title>业务docker化改造 | minkedong's  home</title>
   
 
 
@@ -302,7 +305,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://blog.08050142.com/2017/09/06/elk-grafana/">
+    <link itemprop="mainEntityOfPage" href="http://blog.08050142.com/2018/05/11/docker/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="minkedong">
@@ -319,7 +322,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">实时日志分析之七：Grafana
+          <h1 class="post-title" itemprop="name headline">业务docker化改造
               
             
           </h1>
@@ -344,24 +347,12 @@
                 
               
 
-              <time title="创建时间：2017-09-06 20:17:29" itemprop="dateCreated datePublished" datetime="2017-09-06T20:17:29+08:00">2017-09-06</time>
+              <time title="创建时间：2018-05-11 15:16:29 / 修改时间：17:31:24" itemprop="dateCreated datePublished" datetime="2018-05-11T15:16:29+08:00">2018-05-11</time>
             
 
             
               
 
-              
-                
-                <span class="post-meta-divider">|</span>
-                
-
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">更新于</span>
-                
-                <time title="修改时间：2018-05-10 19:08:19" itemprop="dateModified" datetime="2018-05-10T19:08:19+08:00">2018-05-10</time>
               
             
           </span>
@@ -393,8 +384,8 @@
                 <span class="post-meta-item-icon">
                   <i class="fa fa-comment-o"></i>
                 </span>
-                <a href="/2017/09/06/elk-grafana/#comments" itemprop="discussionUrl">
-                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2017/09/06/elk-grafana/" itemprop="commentCount"></span>
+                <a href="/2018/05/11/docker/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2018/05/11/docker/" itemprop="commentCount"></span>
                 </a>
               </span>
             
@@ -431,18 +422,74 @@
 
       
         <blockquote>
-<p>Grafana是一款采用 go 语言编写的开源应用，主要用于大规模指标数据的可视化展现<br>官方文档：<a href="http://docs.grafana.org/" target="_blank" rel="noopener">http://docs.grafana.org/</a></p>
+<p>在业务逐渐变大后，系统维护工作需要投入越来越多的精力，于是开始了docker化改造。期间也遇到了一些实际问题，总结了一些经验，希望对已在生产环境中使用docker或者正在准备进行服务docker化改造的童鞋有所帮助！</p>
 </blockquote>
 <a id="more"></a>
-<h2 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h2><ul>
-<li>系统：centos7</li>
-<li>ip：192.168.2.233</li>
+<h2 id="为什么docker化"><a href="#为什么docker化" class="headerlink" title="为什么docker化"></a>为什么docker化</h2><p><img src="http://7xl2ev.com1.z0.glb.clouddn.com/blog_docker_why.png" alt="mahua"></p>
+<ul>
+<li>开发过程中一个常见的问题是环境一致性问题。由于开发环境、测试环境、生产环境不一致，导致有些 bug 并未在开发过程中被发现。而 Docker 的镜像提供了除内核外完整的运行时环境，确保了应用运行环境一致性，从而不会再出现 「这段代码在我机器上没问题啊」 这类问题。</li>
+<li>对开发和运维（DevOps）人员来说，最希望的就是一次创建或配置，可以在任意地方正常运行。使用docker的镜像，完成一次build，轻松部署。</li>
+<li>对于系统的运维、扩展、迁移，docker有着天然的优势。</li>
 </ul>
-<h2 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">wget https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana-4.4.3-1.x86_64.rpm</span><br><span class="line">sudo yum localinstall grafana-4.4.3-1.x86_64.rpm</span><br><span class="line">sudo systemctl daemon-reload</span><br><span class="line">sudo systemctl <span class="built_in">enable</span> grafana-server.service</span><br><span class="line">sudo service grafana-server start</span><br></pre></td></tr></table></figure>
-<h2 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h2><p>在grafana中建立前面的elasticsearch的datasource，建立自己的dashboard，就可以实时展示自己的数据了</p>
-<p>推荐插件：<br>    <a href="https://grafana.com/dashboards/878" target="_blank" rel="noopener">https://grafana.com/dashboards/878</a> (监控elasticsearch)</p>
-<p>细节：<br>    如果要在配置里面设置80端口启动，则需要执行以下命令<br>    sudo setcap ‘cap_net_bind_service=+ep’ /usr/sbin/grafana-server</p>
-<p>这里grafana的使用就不做过多介绍了，官网上文档说的已经很详细了！</p>
+<h2 id="为什么没有选择k8s"><a href="#为什么没有选择k8s" class="headerlink" title="为什么没有选择k8s"></a>为什么没有选择k8s</h2><ul>
+<li>k8s对于我们现有的业务系统来说，还是太大太重了。且k8s的学习成本也是相对较大的，当然后期我们应该也会投入研究。总之一句话，就现阶段来说，k8s还不太适合我们。</li>
+</ul>
+<h2 id="Docker相关组件介绍"><a href="#Docker相关组件介绍" class="headerlink" title="Docker相关组件介绍"></a>Docker相关组件介绍</h2><p><strong> 1. image </strong></p>
+<ul>
+<li>镜像是一个特殊的文件系统，除了提供容器运行时所需的程序、库、资源、配置等文件外，还包含了一些为运行时准备的一些配置参数（如匿名卷、环境变量、用户等）。镜像不包含任何动态数据，其内容在构建之后也不会被改变。</li>
+<li>镜像最大的特点就是它是分层存储的，这对于你写出好的Dockerfile有很大的帮助。</li>
+</ul>
+<p><strong> 2. container </strong></p>
+<ul>
+<li>容器是镜像运行时的实体，它的实质是进程，但与直接在宿主机执行的进程不同，容器进程运行于属于自己的独立的命名空间。</li>
+<li>容器可以被创建、启动、停止、删除、暂停等。</li>
+</ul>
+<p><strong> 3. compose </strong></p>
+<ul>
+<li>Docker三剑客之一</li>
+<li>负责实现对Docker容器集群的快速编排。它允许用户通过一个单独的docker-compose.yml模板文件（YAML 格式）来定义一组相关联的应用容器为一个项目（project）。</li>
+</ul>
+<p><strong> 4. machine </strong></p>
+<ul>
+<li>Docker三剑客之一</li>
+<li>可以通过machine连接操作远程docker。</li>
+</ul>
+<p><strong> 5. swarm mode </strong></p>
+<ul>
+<li>Docker三剑客之一</li>
+<li>Swarm是使用SwarmKit构建的Docker引擎内置（原生）的集群管理和编排工具。</li>
+</ul>
+<p><strong> 6. traefik </strong></p>
+<ul>
+<li>traefik是一个HTTP反向代理、负载均衡工具。</li>
+<li>traefik本身也可以运行在docker swarm中，可以作为docker服务的外部流量入口。</li>
+</ul>
+<p><strong> 7. portainer </strong></p>
+<ul>
+<li>Portainer是Docker的图形化管理工具。</li>
+<li>提供状态显示面板、应用模板快速部署、容器镜像网络数据卷的基本操作（包括上传下载镜像，创建容器等操作）、事件日志显示、容器控制台操作、Swarm集群和服务等集中管理和操作、登录用户管理和控制等功能。</li>
+</ul>
+<h2 id="业务Docker化改造图"><a href="#业务Docker化改造图" class="headerlink" title="业务Docker化改造图"></a>业务Docker化改造图</h2><p><img src="http://7xl2ev.com1.z0.glb.clouddn.com/blog_docker.png" alt="mahua"></p>
+<p><strong> 说明 </strong></p>
+<ul>
+<li>首先要说明的是，我们只是进行了部分核心业务的docker化改造。</li>
+<li>Docker Manager节点运行了traefik服务，其作为反向代理，接收外网及内网的流量，然后再反向代理到docker swarm内部服务。</li>
+<li>Docker Manager节点还运行了portainer服务，作为图形化工具，可以让我们轻松的通过web端来控制docker swarm中的服务，例如重启service，新增stack等。当然，这里的portainer服务也是通过traefik反向代理过来的。</li>
+<li>Docker Worker节点上运行着我们的业务服务，他们都是没有开放流量入口的，唯一的方式就是通过traefik反向代理过来。</li>
+<li>Docker Private Registry是我们的私有镜像仓库，是使用了开源的工具Harbor构建的，负责整个swarm集群私有镜像的push和pull。</li>
+<li>在我们自己的机器上，远程控制swarm集群节点，可以使用docker-machine，非常的方便（包括新增swarm节点，查看集群状态等）。</li>
+<li>在docker之外，我们有一个consul服务发现的集群（都在同一内网）。docker外部的内网服务可以通过consul的dns解析，内网请求到docker内部的服务。当然，docker内部的容器服务也可以通过指定consul的dns解析来内网访问外部的服务。</li>
+<li>外网域名解析到traefik几台机器上，使用AWS的route 53的健康检查服务，来尽量保证服务的高可用。而内网域名解析是使用consul，其自带服务发现功能（需要在traefik服务的机器节点上安装consul client服务），同样也能保证服务的高可用。</li>
+</ul>
+<h2 id="遇到的问题及建议"><a href="#遇到的问题及建议" class="headerlink" title="遇到的问题及建议"></a>遇到的问题及建议</h2><ul>
+<li>linode服务器问题：我们的docker swarm集群是在linode服务器上部署的（centos7），由于要使用到overlay网络，服务器的内核必须选择GRUB2。具体可以参考issue：<a href="https://github.com/docker/machine/issues/2753" target="_blank" rel="noopener">https://github.com/docker/machine/issues/2753</a></li>
+<li>Dockerfile写法问题：python等代码COPY操作，可以放在最后，因为在后续开发过程中，类似”RUN apk update &amp;&amp; apk –update add –no-cache lapack-dev”这种安装系统依赖的内容大部分情况下不会再变，变得只有代码，这样的话，只有第一次构建镜像会运行”RUN”的操作（有点慢），后续再次构建镜像时，由于前面的层已经构建了，不需要再次构建，只会把代码加入到镜像中，构建镜像会很快。</li>
+<li>docker swarm集群在多次发布新的镜像后，会产生一些虚悬镜像，可以在docker宿主机上设置一个定时任务，每天清除这些虚悬镜像，命令为：docker image prune -f</li>
+<li>我们的基础镜像大部分选择了alpine，其体积非常之小。</li>
+<li>docker-machine如何在开发成员之间共享已连接的远程机器，我们选择了npm的machine-share工具，其方便的给出了导入导出machine的命令。具体可以参考issue：<a href="https://github.com/docker/machine/issues/23" target="_blank" rel="noopener">https://github.com/docker/machine/issues/23</a></li>
+<li>关于使用traefik之后，如何在反向代理的service中取得用户真实的ip，需要配置traefik使用”mode: host”的方式。具体可以参考stackoverflow：<a href="https://stackoverflow.com/questions/44639958/nginx-behind-traefik-docker-swarm-mode-real-ip" target="_blank" rel="noopener">https://stackoverflow.com/questions/44639958/nginx-behind-traefik-docker-swarm-mode-real-ip</a></li>
+<li>在portainer中，首先要配置的就是registries（我们的私有仓库），这样的话，我们才能保证正常拉取到镜像。</li>
+</ul>
 
       
     </div>
@@ -492,9 +539,13 @@
       
         <div class="post-tags">
           
-            <a href="/tags/grafana/" rel="tag"># grafana</a>
+            <a href="/tags/docker/" rel="tag"># docker</a>
           
-            <a href="/tags/elk/" rel="tag"># elk</a>
+            <a href="/tags/swarm/" rel="tag"># swarm</a>
+          
+            <a href="/tags/traefik/" rel="tag"># traefik</a>
+          
+            <a href="/tags/portainer/" rel="tag"># portainer</a>
           
         </div>
       
@@ -507,8 +558,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/2017/09/06/elk-logstash/" rel="next" title="实时日志分析之六：Logstash">
-                <i class="fa fa-chevron-left"></i> 实时日志分析之六：Logstash
+              <a href="/2018/02/23/consul-rabbitmq/" rel="next" title="rabbitmq集群 && consul自动发现">
+                <i class="fa fa-chevron-left"></i> rabbitmq集群 && consul自动发现
               </a>
             
           </div>
@@ -516,10 +567,6 @@
           <span class="post-nav-divider"></span>
 
           <div class="post-nav-prev post-nav-item">
-            
-              <a href="/2018/01/03/openresty-ppt/" rel="prev" title="OpenResty在高并发场景的应用">
-                OpenResty在高并发场景的应用 <i class="fa fa-chevron-right"></i>
-              </a>
             
           </div>
         </div>
@@ -721,7 +768,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#环境"><span class="nav-number">1.</span> <span class="nav-text">环境</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装"><span class="nav-number">2.</span> <span class="nav-text">安装</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#使用"><span class="nav-number">3.</span> <span class="nav-text">使用</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么docker化"><span class="nav-number">1.</span> <span class="nav-text">为什么docker化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么没有选择k8s"><span class="nav-number">2.</span> <span class="nav-text">为什么没有选择k8s</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Docker相关组件介绍"><span class="nav-number">3.</span> <span class="nav-text">Docker相关组件介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#业务Docker化改造图"><span class="nav-number">4.</span> <span class="nav-text">业务Docker化改造图</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#遇到的问题及建议"><span class="nav-number">5.</span> <span class="nav-text">遇到的问题及建议</span></a></li></ol></div>
             
 
           </div>
