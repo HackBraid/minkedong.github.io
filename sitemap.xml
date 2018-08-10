@@ -2,6 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>http://blog.08050142.com/2017/06/12/hot-key/</loc>
+    
+    <lastmod>2018-08-10T02:25:10.043Z</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>http://blog.08050142.com/2018/05/11/docker/</loc>
     
     <lastmod>2018-05-11T09:32:34.381Z</lastmod>
@@ -16,14 +23,14 @@
   </url>
   
   <url>
-    <loc>http://blog.08050142.com/about/index.html</loc>
+    <loc>http://blog.08050142.com/categories/index.html</loc>
     
     <lastmod>2018-05-10T11:08:19.188Z</lastmod>
     
   </url>
   
   <url>
-    <loc>http://blog.08050142.com/categories/index.html</loc>
+    <loc>http://blog.08050142.com/about/index.html</loc>
     
     <lastmod>2018-05-10T11:08:19.188Z</lastmod>
     
@@ -58,21 +65,14 @@
   </url>
   
   <url>
-    <loc>http://blog.08050142.com/2016/08/12/django-wechatvote/</loc>
-    
-    <lastmod>2018-05-10T11:08:19.185Z</lastmod>
-    
-  </url>
-  
-  <url>
-    <loc>http://blog.08050142.com/2017/06/12/hot-key/</loc>
-    
-    <lastmod>2018-05-10T11:08:19.185Z</lastmod>
-    
-  </url>
-  
-  <url>
     <loc>http://blog.08050142.com/2017/06/12/shell-sudo-su/</loc>
+    
+    <lastmod>2018-05-10T11:08:19.185Z</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://blog.08050142.com/2016/08/12/django-wechatvote/</loc>
     
     <lastmod>2018-05-10T11:08:19.185Z</lastmod>
     
@@ -82,13 +82,6 @@
     <loc>http://blog.08050142.com/2016/12/10/js-prototype/</loc>
     
     <lastmod>2018-05-10T11:08:19.185Z</lastmod>
-    
-  </url>
-  
-  <url>
-    <loc>http://blog.08050142.com/2017/09/06/elk-filebeat/</loc>
-    
-    <lastmod>2018-05-10T11:08:19.184Z</lastmod>
     
   </url>
   
@@ -107,14 +100,21 @@
   </url>
   
   <url>
-    <loc>http://blog.08050142.com/2017/09/06/elk-logstash/</loc>
+    <loc>http://blog.08050142.com/2017/09/06/elk-filebeat/</loc>
+    
+    <lastmod>2018-05-10T11:08:19.184Z</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://blog.08050142.com/2018/01/03/openresty-ppt/</loc>
     
     <lastmod>2018-05-10T11:08:19.183Z</lastmod>
     
   </url>
   
   <url>
-    <loc>http://blog.08050142.com/2018/01/03/openresty-ppt/</loc>
+    <loc>http://blog.08050142.com/2017/09/06/elk-logstash/</loc>
     
     <lastmod>2018-05-10T11:08:19.183Z</lastmod>
     
